@@ -4,6 +4,9 @@ const express = require("express");
 const app = express();
 require("dotenv").config();
 const PORT = process.env.PORT || 3000;
+const HEADWAY_MIN = parseInt(process.env.HEADWAY_MIN) || 3;
+const LAST_WINDOW_START = process.env.LAST_WINDOW_START || "00:45";
+const SERVICE_END = process.env.SERVICE_END || "01:15";
 
 app.use((req, res, next) => {
     const t0 = Date.now();
@@ -26,7 +29,7 @@ app.get("/health", (req, res) => {
 app.get("/next-metro", (req, res) => {
     const station = req.query.station;
 
-    function nextArrival(now = new Date(), headwayMin = 3) {
+    function nextArrival(now = new Date(), headwayMin = HEADWAY_MIN) {
         now.setHours(0, 58, 0, 0); // Lina arrives at 00:58
 
         const tz = "Europe/Paris";

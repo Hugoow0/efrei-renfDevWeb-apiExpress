@@ -20,6 +20,30 @@ paths:
                                         type: string
                                     service:
                                         type: string
+    /db-health:
+        get:
+            summary: Database health check
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    status:
+                                        type: string
+                                    service:
+                                        type: string
+                "500":
+                    description: Database connection error
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
     /next-metro:
         get:
             summary: Prochain passage de métro
@@ -49,6 +73,60 @@ paths:
                                         example: "12:34"
                 "400":
                     description: Paramètre manquant
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+    /last-metro:
+        get:
+            summary: Dernier passage de métro
+            parameters:
+                - in: query
+                  name: station
+                  schema:
+                      type: string
+                  required: true
+                  description: Nom de la station
+            responses:
+                "200":
+                    description: Heure d'arrivée estimée
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    station:
+                                        type: string
+                                    found:
+                                        type: boolean
+                                    heure_dernier_metro:
+                                        type: string
+                                        example: "12:34"
+                "400":
+                    description: Paramètre manquant
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                "404":
+                    description: Station non trouvée dans la base de données
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                                    param_station:
+                                        type: string
+                "500":
+                    description: Erreur connexion à la base de données
                     content:
                         application/json:
                             schema:

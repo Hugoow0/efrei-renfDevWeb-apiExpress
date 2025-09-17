@@ -3,11 +3,21 @@
 const express = require("express");
 const app = express();
 require("dotenv").config();
+const { Pool } = require("pg");
 const PORT = process.env.PORT || 3000;
 const HEADWAY_MIN = parseInt(process.env.HEADWAY_MIN) || 3;
 const LAST_WINDOW_START = process.env.LAST_WINDOW_START || "00:45";
 const SERVICE_END = process.env.SERVICE_END || "01:15";
 const SERVICE_START = process.env.SERVICE_START || "05:30";
+
+// Connexion DB
+const db = new Pool({
+    host: process.env.POSTGRES_HOST,
+    port: process.env.POSTGRES_PORT,
+    user: process.env.POSTGRES_USER,
+    password: process.env.POSTGRES_PASSWORD,
+    database: process.env.POSTGRES_DB,
+});
 
 // Parse time string in format "HH:MM" to hours and minutes
 function parseTimeString(timeStr) {
@@ -52,7 +62,24 @@ app.use((req, res, next) => {
 app.get("/health", (req, res) => {
     return res.status(200).json({
         status: "ok",
+        service: "next-metro-api",
     });
+});
+
+app.get("/db-health", (req, res) => {
+    db.query("SELECT 1")
+        .then(() => {
+            return res.status(200).json({
+                status: "ok",
+                service: "next-metro-db",
+            });
+        })
+        .catch((err) => {
+            console.error("PostgreSQL connection error:", err);
+            return res.status(500).json({
+                error: "Database connection error",
+            });
+        });
 });
 
 app.get("/next-metro", (req, res) => {
@@ -130,6 +157,48 @@ app.get("/next-metro", (req, res) => {
             tz: data.tz,
         };
         return res.status(200).json(result);
+    }
+});
+
+app.get("/last-metro", (req, res) => {
+    const station = req.query.station;
+    let metroDefaultsData = undefined;
+    if (!station) {
+        return res.status(400).json({
+            error: "Missing station parameter",
+        });
+    } else {
+        db.query(
+            "SELECT * FROM public.config WHERE key = 'metro.defaults'"
+        ).then((response) => {
+            metroDefaultsData = response.rows[0].value;
+        });
+        console.log("metroDefaultsData:", metroDefaultsData);
+
+        db.query("SELECT * FROM public.config WHERE key = 'metro.last'")
+            .then((response) => {
+                let data = response.rows[0].value;
+                if (station.toLowerCase() in data) {
+                    console.log("Station found in DB:", station);
+                    return res.status(200).json({
+                        station: station,
+                        lastMetro: data[station.toLowerCase()],
+                        line: metroDefaultsData.line,
+                        tz: metroDefaultsData.tz,
+                    });
+                } else {
+                    return res.status(404).json({
+                        error: "Unknown station",
+                        param_station: station,
+                    });
+                }
+            })
+            .catch((err) => {
+                console.error("PostgreSQL connection error:", err);
+                return res.status(500).json({
+                    error: "Database connection error",
+                });
+            });
     }
 });
 
